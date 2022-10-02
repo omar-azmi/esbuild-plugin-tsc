@@ -5,16 +5,25 @@ const stripComments = require('strip-comments');
 
 const { inspect } = require('util');
 
-const theFinder = new RegExp(
+const theDecoratorFinder = new RegExp(
   /((?<![\(\s]\s*['"])@\w*[\w\d]\s*(?![;])[\((?=\s)])/
 );
 
-const findDecorators = (fileContent) =>
-  theFinder.test(stripComments(fileContent));
+const theSatisfiesFinder = new RegExp(
+  /((?<![\(\s]\s*['"])satisfies\s\w+)/
+);
+
+const findBetaFeatures = (fileContent) => {
+  const fileContent_no_comments = stripComments(fileContent)
+  if (theDecoratorFinder.test(fileContent_no_comments)) return true;
+  if (theSatisfiesFinder.test(fileContent_no_comments)) return true;
+  return false;
+}
+  
 
 const esbuildPluginTsc = ({
   tsconfigPath = path.join(process.cwd(), './tsconfig.json'),
-  force: forceTsc = false,
+  force: forceTsc = true,
   tsx = true,
 } = {}) => ({
   name: 'tsc',
@@ -32,6 +41,7 @@ const esbuildPluginTsc = ({
       }
 
       // Just return if we don't need to search the file.
+      /*
       if (
         !forceTsc &&
         (!parsedTsConfig ||
@@ -40,13 +50,14 @@ const esbuildPluginTsc = ({
       ) {
         return;
       }
+      */
 
       const ts = await fs
         .readFile(args.path, 'utf8')
         .catch((err) => printDiagnostics({ file: args.path, err }));
 
       // Find the decorator and if there isn't one, return out
-      const hasDecorator = findDecorators(ts);
+      const hasDecorator = findBetaFeatures(ts);
       if (!hasDecorator) {
         return;
       }
